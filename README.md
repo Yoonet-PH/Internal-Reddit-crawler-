@@ -1,94 +1,43 @@
-# Devvit Mod Tool Template
+# bataaneyes
 
-A template for building Reddit moderation tools using Devvit web. This template provides a complete foundation for creating custom moderation tools with bulk comment management capabilities.
+A private Devvit app for one person. Once a day it searches Reddit for a short list of terms (Yoonet, Clinic Admin, Clinic Sites, Cliniko by default), keeps only posts from the last week that contain the exact phrase, and emails the new ones to the app owner. If the email cannot be sent it falls back to the modmail of the subreddit it is installed in. The owner reads them and replies from his own account.
 
-## Features
+It never posts, comments, votes or messages anyone on Reddit.
 
-This template includes a working mod tool called **"Mop"** that demonstrates:
+## How it runs
 
-- **Bulk Comment Management**: Remove or lock multiple comments at once
-- **Thread-level Actions**: "Mop comments" - Remove/lock a comment and all its replies
-- **Post-level Actions**: "Mop post comments" - Remove/lock all comments on a post
-- **Flexible Options**:
-  - Remove comments, lock comments, or both
-  - Skip distinguished comments (moderator/admin posts)
-- **Permission Checks**: Only moderators with proper permissions can use the tool
-- **User-friendly Forms**: Interactive forms with clear options and validation
+- **Daily**: a scheduler task at 18:00 UTC, which is 7am New Zealand time during daylight saving.
+- **On demand**: the subreddit menu item "Run Reddit watch now", moderators only.
+- **Install and upgrade**: a dry run that only logs what the next real run would send, and whether email is configured, without sending anything.
 
-## Tech Stack
+## Settings
 
-- [Devvit](https://developers.reddit.com/): Reddit's platform for building and deploying apps
-- [Vite](https://vite.dev/): Fast build tool for the web components
-- [Hono](https://hono.dev/): Lightweight web framework for backend logic
-- [TypeScript](https://www.typescriptlang.org/): Type-safe development
+Subreddit setting "Watch terms", one per line:
 
-## Getting Started
+- `Yoonet` matches the exact phrase, case ignored
+- `r/podiatry` watches every new post in that community
+- `-r/Bataan` mutes a community, `-u/someone` mutes a person
 
-1. **Clone this template** or use it as a starting point for your mod tool
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-3. **Configure your app** in `devvit.json`:
-   - Update the app name
-   - Set your development subreddit
-4. **Start developing**:
-   ```bash
-   npm run dev
-   ```
-5. **Test your changes** in your development subreddit
+App settings, set with `npx devvit settings set <name>`:
 
-## Project Structure
+- `resendApiKey` (secret): a Resend key limited to sending
+- `emailTo`: where digests go
+- `emailFrom`: defaults to `Reddit watch <reddit@ube.ph>`
 
-```
-src/
-├── index.ts          # Main server setup with Hono routes
-├── core/
-│   └── nuke.ts       # Core moderation logic for bulk operations
-└── routes/
-    ├── api.ts        # Public API endpoints
-    ├── forms.ts      # Form submission handlers
-    ├── menu.ts       # Context menu item handlers
-    └── triggers.ts   # App lifecycle triggers
-```
+## Fetch Domains
 
-## Customizing Your Mod Tool
+The following domains are requested for this app:
 
-This template is designed to be easily customizable:
+- `api.resend.com`: sends the daily digest email to the app owner through Resend's documented email API. Devvit has no way to send email, and the owner needs the digest outside Reddit so he sees it with the rest of his working day. One request a day, to one recipient, containing post titles, links, subreddit, author and a short excerpt of public posts.
 
-1. **Modify existing actions**: Edit the nuke functionality in `src/core/nuke.ts`
-2. **Add new menu items**: Update `devvit.json` and add handlers in `src/routes/menu.ts`
-3. **Create new forms**: Add form definitions and handlers in `src/routes/forms.ts`
-4. **Add API endpoints**: Extend `src/routes/api.ts` for external integrations
+## Data
 
-## Commands
+Redis holds only post ids, each expiring after 30 days, so the same post is not sent twice. No post text is stored by the app. Each digest email goes to the owner only. See [terms](docs/terms.md) and [privacy](docs/privacy.md).
 
-- `npm run dev`: Starts development mode with live reload on your test subreddit
-- `npm run build`: Builds your mod tool for production
-- `npm run deploy`: Uploads a new version of your app to Reddit
-- `npm run launch`: Publishes your app for review and public use
-- `npm run login`: Authenticates your CLI with Reddit
-- `npm run type-check`: Runs TypeScript type checking, linting, and formatting
+## Develop
 
-## How It Works
+Node 24 (`fnm use 24`).
 
-The template demonstrates Reddit mod tool development through the "Mop" feature:
-
-1. **Context Menu Integration**: Click on the Mod Shield icon in a comment to see custom mod actions
-2. **Permission Validation**: Automatically checks if the user has moderation permissions
-3. **Interactive Forms**: Presents options through Reddit's native form system
-4. **Reddit API**: Processes multiple comments using Reddit's API
-
-## Development Notes
-
-- **Permissions**: The app requires `reddit: true` permission to access Reddit's API
-- **User Types**: Menu items are restricted to `moderator` user type
-
-## Deployment
-
-1. Test thoroughly in your development subreddit
-2. Run `npm run deploy` to upload your app
-3. Use `npm run launch` to submit for Reddit's app review process
-4. Once approved, users can install your mod tool from Reddit's app directory
-
-This template provides everything you need to build powerful, user-friendly moderation tools for Reddit communities.
+- `npm run test:unit`, `npm run test:types`, `npm run lint`, `npm run build`
+- `npx devvit upload` then `npx devvit install bataaneyes_dev` to update the test subreddit
+- `npx devvit logs bataaneyes_dev` to read what a run did

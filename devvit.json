@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "yoonet-watch",
+  "name": "bataaneyes",
   "server": {
     "dir": "dist/server",
     "entry": "index.cjs"
@@ -9,7 +9,7 @@
     "items": [
       {
         "label": "Run Reddit watch now",
-        "description": "Search Reddit for the watch terms and send new posts to modmail.",
+        "description": "Search Reddit for the watch terms and email the new posts (modmail if email fails).",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/run-now"
@@ -36,6 +36,24 @@
         "helpText": "One per line, matched as an exact phrase. r/name watches every new post in a community. -r/name mutes a community, -u/name mutes a person.",
         "defaultValue": "Yoonet\nClinic Admin\nClinic Sites\nCliniko"
       }
+    },
+    "global": {
+      "resendApiKey": {
+        "type": "string",
+        "label": "Resend API key",
+        "helpText": "Sending only key for ube.ph. Set with npx devvit settings set resendApiKey.",
+        "isSecret": true
+      },
+      "emailTo": {
+        "type": "string",
+        "label": "Send digests to",
+        "helpText": "One address, or several separated by commas."
+      },
+      "emailFrom": {
+        "type": "string",
+        "label": "Send digests from",
+        "defaultValue": "Reddit watch <reddit@ube.ph>"
+      }
     }
   },
   "scripts": {
@@ -44,6 +62,13 @@
   },
   "permissions": {
     "reddit": true,
-    "redis": true
+    "redis": true,
+    "http": {
+      "enable": true,
+      "domains": ["api.resend.com"]
+    }
+  },
+  "dev": {
+    "subreddit": "bataaneyes_dev"
   }
 }
