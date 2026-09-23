@@ -24,6 +24,27 @@ function toHit(post: Post, matched: string[]): Hit {
   };
 }
 
+const RETRY_DELAYS_MS = [2_000, 8_000];
+
+/** Reddit's search sometimes refuses a request outright ("14 UNAVAILABLE: Stream
+ * refused by server", seen 23/09). Retry twice, then give up on this term only;
+ * the week long window means tomorrow's run picks up what today's missed. */
+async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T | undefined> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (delay === undefined) {
+        console.error(`${label} failed after ${attempt + 1} tries: ${String(err)}`);
+        return undefined;
+      }
+      console.warn(`${label} failed, retrying in ${delay / 1000}s: ${String(err)}`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+
 export async function loadConfig(): Promise<WatchConfig> {
   const raw = (await settings.get<string>('terms')) ?? DEFAULT_TERMS;
   return parseTerms(raw);
@@ -34,27 +55,38 @@ export async function loadConfig(): Promise<WatchConfig> {
 export async function runWatch(config: WatchConfig): Promise<WatchResult> {
   const since = Date.now() - WINDOW_DAYS * 86_400_000;
   const candidates = new Map<string, { post: Post; community?: string }>();
+  const failed: string[] = [];
   let searched = 0;
 
   for (const term of config.terms) {
-    const posts = await reddit
-      .searchPosts({
-        query: `"${term}"`,
-        sort: 'new',
-        timeframe: 'week',
-        limit: SEARCH_LIMIT,
-        pageSize: 100,
-      })
-      .all();
+    const posts = await withRetry(`search "${term}"`, () =>
+      reddit
+        .searchPosts({
+          query: `"${term}"`,
+          sort: 'new',
+          timeframe: 'week',
+          limit: SEARCH_LIMIT,
+          pageSize: 100,
+        })
+        .all()
+    );
+    if (!posts) {
+      failed.push(term);
+      continue;
+    }
     searched += posts.length;
     console.log(`search "${term}": ${posts.length} posts`);
     for (const post of posts) candidates.set(post.id, { post });
   }
 
   for (const name of config.communities) {
-    const posts = await reddit
-      .getNewPosts({ subredditName: name, limit: 100, pageSize: 100 })
-      .all();
+    const posts = await withRetry(`community r/${name}`, () =>
+      reddit.getNewPosts({ subredditName: name, limit: 100, pageSize: 100 }).all()
+    );
+    if (!posts) {
+      failed.push(`r/${name}`);
+      continue;
+    }
     searched += posts.length;
     console.log(`community r/${name}: ${posts.length} posts`);
     for (const post of posts) {
@@ -87,7 +119,7 @@ export async function runWatch(config: WatchConfig): Promise<WatchResult> {
   }
 
   hits.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  return { hits, searched, droppedLoose, alreadySeen };
+  return { hits, searched, droppedLoose, alreadySeen, failed };
 }
 
 /** Called only after a send succeeds, so a failed send is retried next run. */

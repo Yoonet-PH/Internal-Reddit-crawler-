@@ -38,7 +38,7 @@ void test('digest caps the list and reports the counts', () => {
     excerpt: 'text',
   });
   const hits = Array.from({ length: 27 }, (_, i) => hit(i));
-  const { subject, body } = digest({ hits, searched: 300, droppedLoose: 40, alreadySeen: 2 });
+  const { subject, body } = digest({ hits, searched: 300, droppedLoose: 40, alreadySeen: 2, failed: [] });
   assert.equal(subject, 'Reddit watch: 27 new posts');
   assert.ok(body.includes('**[Post 0](https://www.reddit.com/r/physio/comments/0/)**'));
   assert.ok(body.includes('21/09 · 1 comment ·'));
@@ -63,10 +63,20 @@ void test('digestHtml escapes Reddit text', () => {
     searched: 1,
     droppedLoose: 0,
     alreadySeen: 0,
+    failed: [],
   });
   assert.ok(!html.includes('<script>'));
   assert.ok(!html.includes('<img'));
   assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;quotes&quot;'));
   assert.ok(html.includes('href="https://www.reddit.com/r/physio/comments/x/?a=1&amp;b=2"'));
   assert.ok(html.includes('u/a&lt;b'));
+});
+
+void test('digest says which terms Reddit refused to search', () => {
+  const base = { hits: [], searched: 10, droppedLoose: 0, alreadySeen: 0 };
+  const one = digest({ ...base, failed: ['Cliniko'] }).body;
+  assert.ok(one.includes('Reddit would not search Cliniko this time, so it is tried again tomorrow.'));
+  const two = digestHtml({ ...base, failed: ['Yoonet', 'r/podiatry'] });
+  assert.ok(two.includes('Reddit would not search Yoonet, r/podiatry this time, so they are tried again tomorrow.'));
+  assert.ok(!digest({ ...base, failed: [] }).body.includes('would not search'));
 });

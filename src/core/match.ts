@@ -26,7 +26,14 @@ export type WatchResult = {
   searched: number;
   droppedLoose: number;
   alreadySeen: number;
+  /** Terms or communities Reddit refused to search this run. */
+  failed: string[];
 };
+
+const failedNote = (failed: string[]) =>
+  failed.length
+    ? `Reddit would not search ${failed.join(', ')} this time, so ${failed.length === 1 ? 'it is' : 'they are'} tried again tomorrow.`
+    : '';
 
 export function parseTerms(raw: string): WatchConfig {
   const config: WatchConfig = {
@@ -85,6 +92,7 @@ export function digest(result: WatchResult): { subject: string; body: string } {
       .join('\n\n')
   );
   if (n > shown.length) lines.push(`…and ${n - shown.length} more, which will come in the next digest.`);
+  if (result.failed.length) lines.push(failedNote(result.failed));
   lines.push(
     `^(Searched ${result.searched} posts, dropped ${result.droppedLoose} loose matches, skipped ${result.alreadySeen} already sent.)`
   );
@@ -115,6 +123,7 @@ ${h.excerpt ? `<div style="font-size:17px;color:#333333;margin-top:8px;line-heig
 ${items}
 </table>
 ${more}
+${result.failed.length ? `<p style="max-width:600px;margin:16px auto 0;font-size:17px;color:#333333">${esc(failedNote(result.failed))}</p>` : ''}
 <p style="max-width:600px;margin:16px auto 0;font-size:14px;color:#595959">Searched ${result.searched} posts, dropped ${result.droppedLoose} loose matches, skipped ${result.alreadySeen} already sent. Reply from your own account; this app never posts.</p>
 </body></html>`;
 }
