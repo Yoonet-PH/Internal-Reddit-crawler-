@@ -3,7 +3,7 @@ import type { WatchResult } from './match';
 import { DIGEST_MAX, digest, digestHtml } from './match';
 import { loadConfig, rememberSent, runWatch } from './watch';
 
-const DEFAULT_FROM = 'Reddit watch <reddit@ube.ph>';
+const DEFAULT_FROM = 'Reddit watch <reddit@notification.yoonet.io>';
 
 async function emailSettings() {
   return {

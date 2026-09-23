@@ -41,7 +41,7 @@
       "resendApiKey": {
         "type": "string",
         "label": "Resend API key",
-        "helpText": "Sending only key for ube.ph. Set with npx devvit settings set resendApiKey.",
+        "helpText": "Resend key for notification.yoonet.io. Set with npx devvit settings set resendApiKey.",
         "isSecret": true
       },
       "emailTo": {
@@ -52,7 +52,7 @@
       "emailFrom": {
         "type": "string",
         "label": "Send digests from",
-        "defaultValue": "Reddit watch <reddit@ube.ph>"
+        "defaultValue": "Reddit watch <reddit@notification.yoonet.io>"
       }
     }
   },

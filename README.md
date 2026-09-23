@@ -20,9 +20,9 @@ Subreddit setting "Watch terms", one per line:
 
 App settings, set with `npx devvit settings set <name>`:
 
-- `resendApiKey` (secret): a Resend key limited to sending
+- `resendApiKey` (secret): a Resend key for notification.yoonet.io
 - `emailTo`: where digests go
-- `emailFrom`: defaults to `Reddit watch <reddit@ube.ph>`
+- `emailFrom`: defaults to `Reddit watch <reddit@notification.yoonet.io>`
 
 ## Fetch Domains
 
