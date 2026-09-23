@@ -1,0 +1,30 @@
+# reddit-watch key terms. One per line, matched as an exact phrase, case ignored.
+# Lines starting with # are off. Edit freely, the next scan picks it up.
+#
+# Mute a community or a person with a leading minus:
+#   -r/cambridge_uni
+#   -u/SomeSpamAccount
+
+# Brands
+Yoonet
+Clinic Admin
+Clinic Sites
+
+# Software our clinics live in. Owners here talk about admin pain.
+# This also catches every post in r/Cliniko (4 posts since it opened 05/2026),
+# so there is no need to watch that community separately.
+Cliniko
+
+# Watch every new post in a community with a line like:
+#   r/podiatry
+
+# Off by default because they are loud or ambiguous:
+# Balanga        about 40 posts a day in r/Bataan and r/casualbataan, almost none about us
+# UBE            mostly the purple yam
+# Outer Edge     common phrase, needs a narrower form before it is useful
+
+# Buying signals, switch on if you want prospect threads as well as mentions:
+# clinic receptionist
+# podiatry admin
+# virtual assistant Philippines
+# outsourcing Philippines
