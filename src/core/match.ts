@@ -99,31 +99,29 @@ export function digest(result: WatchResult): { subject: string; body: string } {
   return { subject, body: lines.join('\n\n---\n\n') };
 }
 
-const esc = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/** Slack mrkdwn needs only &, < and > escaped; links are <url|text>. */
+const slackEsc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** The same digest as an email: light, one column, readable on a phone. */
-export function digestHtml(result: WatchResult): string {
+/** The digest as one Slack message. */
+export function slackText(result: WatchResult): string {
+  const n = result.hits.length;
   const shown = result.hits.slice(0, DIGEST_MAX);
-  const items = shown
-    .map(
-      (h) => `<tr><td style="padding:16px 0;border-bottom:1px solid #e5e5e5">
-<a href="${esc(h.url)}" style="font-size:18px;font-weight:600;color:#1a1a1a;text-decoration:none">${esc(h.title)}</a>
-<div style="font-size:14px;color:#595959;margin-top:6px">r/${esc(h.subreddit)} · u/${esc(h.author)} · ${ddmm(h.createdAt)} · ${h.comments} comment${h.comments === 1 ? '' : 's'} · matched ${esc(h.matched.join(', '))}</div>
-${h.excerpt ? `<div style="font-size:17px;color:#333333;margin-top:8px;line-height:1.5">${esc(h.excerpt)}</div>` : ''}
-</td></tr>`
-    )
-    .join('\n');
-  const more = result.hits.length > shown.length
-    ? `<p style="max-width:600px;margin:16px auto 0;font-size:17px;color:#333333">…and ${result.hits.length - shown.length} more, which will come in the next digest.</p>`
-    : '';
-  return `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;padding:24px 16px;background:#ffffff;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;overflow-wrap:anywhere">
-<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;border-collapse:collapse">
-<tr><td style="font-size:20px;font-weight:700;color:#1a1a1a;padding-bottom:4px">New on Reddit for your watch terms</td></tr>
-${items}
-</table>
-${more}
-${result.failed.length ? `<p style="max-width:600px;margin:16px auto 0;font-size:17px;color:#333333">${esc(failedNote(result.failed))}</p>` : ''}
-<p style="max-width:600px;margin:16px auto 0;font-size:14px;color:#595959">Searched ${result.searched} posts, dropped ${result.droppedLoose} loose matches, skipped ${result.alreadySeen} already sent. Reply from your own account; this app never posts.</p>
-</body></html>`;
+  const lines = [`*${n} new Reddit post${n === 1 ? '' : 's'} for your watch terms*`];
+  for (const h of shown) {
+    lines.push(
+      [
+        `<${h.url}|${slackEsc(h.title)}>`,
+        `r/${slackEsc(h.subreddit)} · u/${slackEsc(h.author)} · ${ddmm(h.createdAt)} · ${h.comments} comment${h.comments === 1 ? '' : 's'} · matched ${slackEsc(h.matched.join(', '))}`,
+        h.excerpt ? `> ${slackEsc(h.excerpt)}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+    );
+  }
+  if (n > shown.length) lines.push(`…and ${n - shown.length} more, which will come in the next digest.`);
+  if (result.failed.length) lines.push(slackEsc(failedNote(result.failed)));
+  lines.push(
+    `_Searched ${result.searched} posts, dropped ${result.droppedLoose} loose matches, skipped ${result.alreadySeen} already sent._`
+  );
+  return lines.join('\n\n');
 }

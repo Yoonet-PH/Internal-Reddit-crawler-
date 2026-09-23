@@ -1,41 +1,36 @@
 import { context, reddit, settings } from '@devvit/web/server';
 import type { WatchResult } from './match';
-import { DIGEST_MAX, digest, digestHtml } from './match';
+import { DIGEST_MAX, digest, slackText } from './match';
 import { loadConfig, rememberSent, runWatch } from './watch';
 
-const DEFAULT_FROM = 'Reddit watch <reddit@notification.yoonet.io>';
-
-async function emailSettings() {
+async function slackSettings() {
   return {
-    apiKey: await settings.get<string>('resendApiKey'),
-    from: (await settings.get<string>('emailFrom')) || DEFAULT_FROM,
-    to: await settings.get<string>('emailTo'),
+    token: await settings.get<string>('slackBotToken'),
+    channel: await settings.get<string>('slackChannel'),
   };
 }
 
-/** Resend first. Throws with the reason if the key or address is missing, or if
- * the request fails, for example while Reddit has not yet approved the domain. */
-async function sendEmail(result: WatchResult): Promise<void> {
-  const { apiKey, from, to } = await emailSettings();
-  if (!apiKey || !to) throw new Error('email not configured (resendApiKey or emailTo unset)');
-  const { subject, body } = digest(result);
-  const first = result.hits[0]?.id ?? 'none';
-  const res = await fetch('https://api.resend.com/emails', {
+/** Slack first. Throws with the reason if the token or channel is missing, or if
+ * Slack refuses the post. Slack answers 200 with ok:false on errors such as
+ * not_in_channel, so the body is checked, not just the status. */
+async function sendSlack(result: WatchResult): Promise<void> {
+  const { token, channel } = await slackSettings();
+  if (!token || !channel) throw new Error('Slack not configured (slackBotToken or slackChannel unset)');
+  const res = await fetch('https://slack.com/api/chat.postMessage', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': `reddit-watch-${new Date().toISOString().slice(0, 10)}-${first}-${result.hits.length}`,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json; charset=utf-8',
     },
     body: JSON.stringify({
-      from,
-      to: to.split(',').map((a) => a.trim()).filter(Boolean),
-      subject,
-      html: digestHtml(result),
-      text: body,
+      channel,
+      text: slackText(result),
+      unfurl_links: false,
+      unfurl_media: false,
     }),
   });
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+  if (!res.ok || !body.ok) throw new Error(`Slack ${res.status}: ${body.error ?? 'unknown error'}`);
 }
 
 async function sendModmail(result: WatchResult): Promise<void> {
@@ -47,7 +42,7 @@ async function sendModmail(result: WatchResult): Promise<void> {
   });
 }
 
-/** The real run: search, send by email (modmail if email fails), then remember
+/** The real run: search, post to Slack (modmail if Slack fails), then remember
  * what was sent. Returns how many posts went out and by which route. */
 export async function scanAndSend(): Promise<{ sent: number; via: string }> {
   const config = await loadConfig();
@@ -57,11 +52,11 @@ export async function scanAndSend(): Promise<{ sent: number; via: string }> {
   );
   if (!result.hits.length) return { sent: 0, via: 'none' };
 
-  let via = 'email';
+  let via = 'Slack';
   try {
-    await sendEmail(result);
+    await sendSlack(result);
   } catch (err) {
-    console.error(`email failed, using modmail: ${String(err)}`);
+    console.error(`Slack failed, using modmail: ${String(err)}`);
     await sendModmail(result);
     via = 'modmail';
   }
@@ -76,11 +71,11 @@ export async function scanAndSend(): Promise<{ sent: number; via: string }> {
 export async function dryRun(): Promise<void> {
   const config = await loadConfig();
   const result = await runWatch(config);
-  const { apiKey, from, to } = await emailSettings();
+  const { token, channel } = await slackSettings();
   console.log(
     `dry run: terms ${JSON.stringify(config.terms)}, ${result.searched} searched, ${result.hits.length} would send, ${result.droppedLoose} loose dropped`
   );
-  console.log(`email: key ${apiKey ? 'set' : 'MISSING'}, to ${to ? 'set' : 'MISSING'}, from ${from}`);
+  console.log(`Slack: token ${token ? 'set' : 'MISSING'}, channel ${channel ?? 'MISSING'}`);
   for (const h of result.hits) {
     console.log(
       `  ${h.createdAt.toISOString().slice(0, 10)} r/${h.subreddit} [${h.matched.join(', ')}] ${h.title} ${h.url}`

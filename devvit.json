@@ -9,7 +9,7 @@
     "items": [
       {
         "label": "Run Reddit watch now",
-        "description": "Search Reddit for the watch terms and email the new posts (modmail if email fails).",
+        "description": "Search Reddit for the watch terms and post the new ones to Slack (modmail if Slack fails).",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/run-now"
@@ -38,21 +38,16 @@
       }
     },
     "global": {
-      "resendApiKey": {
+      "slackBotToken": {
         "type": "string",
-        "label": "Resend API key",
-        "helpText": "Resend key for notification.yoonet.io. Set with npx devvit settings set resendApiKey.",
+        "label": "Slack bot token",
+        "helpText": "xoxb token for a Slack app with chat:write. Set with npx devvit settings set slackBotToken.",
         "isSecret": true
       },
-      "emailTo": {
+      "slackChannel": {
         "type": "string",
-        "label": "Send digests to",
-        "helpText": "One address, or several separated by commas."
-      },
-      "emailFrom": {
-        "type": "string",
-        "label": "Send digests from",
-        "defaultValue": "Reddit watch <reddit@notification.yoonet.io>"
+        "label": "Slack channel ID",
+        "helpText": "The channel the digest posts to, for example C0123456789. The bot must be a member."
       }
     }
   },
@@ -65,7 +60,7 @@
     "redis": true,
     "http": {
       "enable": true,
-      "domains": ["api.resend.com"]
+      "domains": ["slack.com"]
     }
   },
   "dev": {

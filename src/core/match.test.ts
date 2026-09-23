@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { digest, digestHtml, matchedTerms, parseTerms } from './match.ts';
+import { digest, matchedTerms, parseTerms, slackText } from './match.ts';
 
 void test('parseTerms splits terms, communities and mutes', () => {
   const c = parseTerms('Yoonet\n# off\n"Clinic Admin"\nr/podiatry\n-r/Bataan\n-u/SpamBot\n\n');
@@ -47,36 +47,37 @@ void test('digest caps the list and reports the counts', () => {
   assert.ok(!body.includes('Post 26'));
 });
 
-void test('digestHtml escapes Reddit text', () => {
-  const html = digestHtml({
+void test('slackText links titles and escapes Reddit text', () => {
+  const text = slackText({
     hits: [{
       id: 't3_x',
-      title: '<script>alert(1)</script> & "quotes"',
+      title: 'Cliniko <or> Nookal & which?',
       subreddit: 'physio',
-      author: 'a<b',
-      url: 'https://www.reddit.com/r/physio/comments/x/?a=1&b=2',
-      createdAt: new Date(Date.UTC(2026, 8, 21)),
-      comments: 0,
+      author: 'someone',
+      url: 'https://www.reddit.com/r/physio/comments/x/',
+      createdAt: new Date(Date.UTC(2026, 8, 24)),
+      comments: 3,
       matched: ['Cliniko'],
-      excerpt: '<img src=x onerror=alert(1)>',
+      excerpt: 'a > b',
     }],
-    searched: 1,
-    droppedLoose: 0,
+    searched: 42,
+    droppedLoose: 35,
     alreadySeen: 0,
-    failed: [],
+    failed: ['Yoonet'],
   });
-  assert.ok(!html.includes('<script>'));
-  assert.ok(!html.includes('<img'));
-  assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;quotes&quot;'));
-  assert.ok(html.includes('href="https://www.reddit.com/r/physio/comments/x/?a=1&amp;b=2"'));
-  assert.ok(html.includes('u/a&lt;b'));
+  assert.ok(text.startsWith('*1 new Reddit post for your watch terms*'));
+  assert.ok(text.includes('<https://www.reddit.com/r/physio/comments/x/|Cliniko &lt;or&gt; Nookal &amp; which?>'));
+  assert.ok(text.includes('r/physio · u/someone · 24/09 · 3 comments · matched Cliniko'));
+  assert.ok(text.includes('> a &gt; b'));
+  assert.ok(text.includes('Reddit would not search Yoonet this time, so it is tried again tomorrow.'));
+  assert.ok(text.endsWith('_Searched 42 posts, dropped 35 loose matches, skipped 0 already sent._'));
 });
 
 void test('digest says which terms Reddit refused to search', () => {
   const base = { hits: [], searched: 10, droppedLoose: 0, alreadySeen: 0 };
   const one = digest({ ...base, failed: ['Cliniko'] }).body;
   assert.ok(one.includes('Reddit would not search Cliniko this time, so it is tried again tomorrow.'));
-  const two = digestHtml({ ...base, failed: ['Yoonet', 'r/podiatry'] });
+  const two = slackText({ ...base, failed: ['Yoonet', 'r/podiatry'] });
   assert.ok(two.includes('Reddit would not search Yoonet, r/podiatry this time, so they are tried again tomorrow.'));
   assert.ok(!digest({ ...base, failed: [] }).body.includes('would not search'));
 });

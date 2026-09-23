@@ -1,6 +1,6 @@
 # bataaneyes
 
-A private Devvit app for one person. Once a day it searches Reddit for a short list of terms (Yoonet, Clinic Admin, Clinic Sites, Cliniko by default), keeps only posts from the last week that contain the exact phrase, and emails the new ones to the app owner. If the email cannot be sent it falls back to the modmail of the subreddit it is installed in. The owner reads them and replies from his own account.
+A private Devvit app operated by UBE. Once a day it searches Reddit for a short list of terms (Yoonet, Clinic Admin, Clinic Sites, Cliniko by default), keeps only posts from the last week that contain the exact phrase, and posts the new ones to one private channel in UBE's own Slack workspace. If Slack cannot be reached it falls back to the modmail of the subreddit it is installed in. People read them there and reply from their own Reddit accounts.
 
 It never posts, comments, votes or messages anyone on Reddit.
 
@@ -8,7 +8,8 @@ It never posts, comments, votes or messages anyone on Reddit.
 
 - **Daily**: a scheduler task at 18:00 UTC, which is 7am New Zealand time during daylight saving.
 - **On demand**: the subreddit menu item "Run Reddit watch now", moderators only.
-- **Install and upgrade**: a dry run that only logs what the next real run would send, and whether email is configured, without sending anything.
+- **Install and upgrade**: a dry run that only logs what the next real run would send, and whether Slack is configured, without sending anything.
+- **Reddit refuses a search**: each search retries twice; a term that still fails is skipped and named in the digest, and the week long window means the next run picks it up.
 
 ## Settings
 
@@ -20,19 +21,18 @@ Subreddit setting "Watch terms", one per line:
 
 App settings, set with `npx devvit settings set <name>`:
 
-- `resendApiKey` (secret): a Resend key for notification.yoonet.io
-- `emailTo`: where digests go
-- `emailFrom`: defaults to `Reddit watch <reddit@notification.yoonet.io>`
+- `slackBotToken` (secret): the bot token of a Slack app with only the `chat:write` scope
+- `slackChannel`: the channel ID the digest posts to; the bot must be a member
 
 ## Fetch Domains
 
 The following domains are requested for this app:
 
-- `api.resend.com`: sends the daily digest email to the app owner through Resend's documented email API. Devvit has no way to send email, and the owner needs the digest outside Reddit so he sees it with the rest of his working day. One request a day, to one recipient, containing post titles, links, subreddit, author and a short excerpt of public posts.
+- `slack.com`: calls Slack's documented `chat.postMessage` method to post the daily digest into one private channel in the operator's own Slack workspace. Devvit cannot reach Slack otherwise, and the operator works from Slack, not Reddit's inbox. One request a day, to one channel, containing post titles, links, subreddit, author and a short excerpt of public posts.
 
 ## Data
 
-Redis holds only post ids, each expiring after 30 days, so the same post is not sent twice. No post text is stored by the app. Each digest email goes to the owner only. See [terms](docs/terms.md) and [privacy](docs/privacy.md).
+Redis holds only post ids, each expiring after 30 days, so the same post is not sent twice. No post text is stored by the app. Each digest goes to one private Slack channel only. See [terms](docs/terms.md) and [privacy](docs/privacy.md).
 
 ## Develop
 
